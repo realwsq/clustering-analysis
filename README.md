@@ -10,12 +10,12 @@ This project aims to approach the question of	*Whether neurons of a population e
 
 At the moment, we have:
 
--⁠  ⁠🚀 Built core features.
--⁠  ⁠🧪 Tested and experimented on the IBL brainwide map dataset.
+-  🚀 Built core features.
+-  ⁠🧪 Tested and experimented on the IBL brainwide map dataset.
 
 We are
 
--⁠  ⁠📖 Writing documentation and examples.
+-   ⁠📖 Writing documentation and examples.
 
 We will provide more information, including installation instructions and feature demos, as we approach a stable release.
 
