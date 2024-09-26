@@ -11,22 +11,22 @@ This project aims to approach the question of	*Whether neurons of a population e
 At the moment, we have:
 
 -  🚀 Built core features.
--  ⁠🧪 Tested and experimented on the IBL brainwide map dataset.
+-  ⁠🧪 Experimented on the IBL brainwide map dataset.
 
 We are
 
 -   ⁠📖 Writing documentation and examples.
 
-We will provide more information, including installation instructions and feature demos, as we approach a stable release.
+We will provide more information, including feature demos, as we approach a stable release.
 
 ## How to Stay Updated
 
 -  ⁠🌟 *Star this repository* to receive notifications about the latest updates.
 -  ⁠📧 *Watch* the repository for detailed development progress.
 
-## License
+## Contact
 
-This project is licensed under the [MIT License](LICENSE).
+shuqi.wang@epfl.ch
 
 ---
 
