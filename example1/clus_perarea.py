@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 import scipy.stats as ss
 
 
-local_folder_lf = os.path.join(f"/burg/stats/users/sw3894/bwm_original/cortexbwm/", "RRR_local_folder_original")
+local_folder_lf = f"/burg/stats/users/sw3894/bwm_original/cortexbwm/RRR_local_folder_original"
 RRR_res_df = pd.read_json(os.path.join(local_folder_lf, "RRRglobal_full.json"))
 resgood_folder = make_folder("./example1/res_good")
 
@@ -122,7 +122,6 @@ results['N'] = np.asarray(results['N'])
 fig, axes = plt.subplots(3, 1,figsize=(5*1, 4*3))
 hierarchy_trend(results, H1, f"Silhouette Score (z)", 
                     plot_trend=False, plot_regression=True, ax=axes[0])
-# axes[0].axhline(y=3.353, c='gray', linestyle='--')
 axes[0].axhline(y=ss.norm.ppf(1-0.01/len(results)), c='gray', linestyle='--')
 axes[0].axhline(y=ss.norm.ppf(1-0.05/len(results)), c='gray', linestyle='--')
 ax = axes[1]
