@@ -15,6 +15,7 @@ RRR_res_df = pd.read_json(os.path.join(local_folder_lf, "RRRglobal_full.json"))
 resgood_folder = make_folder("./example1/res_good")
 
 inc_param=dict(min_N=50, min_r2=0.015) 
+null_params = {"null_dist": "Gaussian", "preprocess_null": False,}
 ## parameters for clustering
 # setup 1
 clus_param=dict(algo="kmeans",dis_metric="euclidean",n_clus_lim=[3,20], n_init=50, ms_metric='sscore',
@@ -22,36 +23,26 @@ clus_param=dict(algo="kmeans",dis_metric="euclidean",n_clus_lim=[3,20], n_init=5
 beta_preprocess = [['sum', 2]]
 # # setup 2
 # clus_param=dict(algo="kmeans",dis_metric="euclidean",n_clus_lim=[3,20], n_init=50, ms_metric='sscore',
-#                 sel="beta_PCA", ) 
-# beta_preprocess = [['pca_temporal', [False, 0.8], False]]
-# # setup 3
-# clus_param=dict(algo="kmeans",dis_metric="euclidean",n_clus_lim=[3,20], n_init=50, ms_metric='sscore',
-#                 sel="beta_PCA", ) 
-# beta_preprocess = [['pca_temporal', [True, 1], False]]
-# # setup 4
-# clus_param=dict(algo="kmeans",dis_metric="euclidean",n_clus_lim=[3,20], n_init=50, ms_metric='sscore',
-#                 sel="beta", ) 
-# beta_preprocess = [['pca', 0.5]]
-# # setup 5
-# clus_param=dict(algo="kmeans",dis_metric="euclidean",n_clus_lim=[3,20], n_init=50, ms_metric='sscore',
 #                 sel="beta_sum", ) 
 # beta_preprocess = [['sum', 2]]
 # inc_param['min_r2']=0.01 
-# # setup 6
+# # setup 3
 # clus_param=dict(algo="kmeans",dis_metric="euclidean",n_clus_lim=[3,20], n_init=50, ms_metric='sscore',
 #                 sel="beta_sum", ) 
 # beta_preprocess = [['sum', 2]]
 # inc_param['min_r2']=0.02 
-# # setup 7 
+# # setup 4
+# clus_param=dict(algo="kmeans",dis_metric="euclidean",n_clus_lim=[3,20], n_init=50, ms_metric='sscore',
+#                 sel="beta_PCA", ) 
+# beta_preprocess = [['pca_temporal', [False, 0.8]]]
+# # setup 5 
 # clus_param=dict(algo="leiden", dis_metric="euclidean", k_list=range(3,100), n_iterations=-1, eval_metrics=["sscore", "modularity"], ms_metric="sscore",
-# # clus_param=dict(algo="spectral",k_list=[10,20,30],n_clus_lim=[3,20], n_init=50, ms_metric='sscore',dis_metric="euclidean",
 #                 sel="beta_sum", ) 
 # beta_preprocess = [['sum', 2]]
 
-
 sus_clus_thres = 0.9
-clusfig_folder = make_folder(os.path.join(resgood_folder, f"clus",remove_space(f"{inc_param.values()}"), remove_space(f"{clus_param.values()}_{beta_preprocess}_{sus_clus_thres}")))
-clus_folder = make_folder(os.path.join(local_folder_lf, f"clus",remove_space(f"{inc_param.values()}"), remove_space(f"{clus_param.values()}_{beta_preprocess}_{sus_clus_thres}")))
+clusfig_folder = make_folder(os.path.join(resgood_folder, f"clus",remove_space(f"{inc_param.values()}"), remove_space(f"{clus_param.values()}_{beta_preprocess}_{sus_clus_thres}_{null_params}")))
+clus_folder = make_folder(os.path.join(local_folder_lf, f"clus",remove_space(f"{inc_param.values()}"), remove_space(f"{clus_param.values()}_{beta_preprocess}_{sus_clus_thres}_{null_params}")))
 print(clusfig_folder)
 print(clusfig_folder)
 print(clus_folder)
@@ -72,11 +63,12 @@ area_order_H = np.array([a for a in conn_area_list_byH if np.sum((nis_incmask_ct
 
 ## clustering analysis
 N_nullG = 100; 
+null_kwargs = {"N_null": N_nullG, **null_params}
 sus_clus_kwargs = {"remove_sus_clus": True, "sessions_orig": None, "sus_clus_thres": sus_clus_thres}
 algo_kwargs = {"min_N": inc_param['min_N'], 'clus_folder': clus_folder, 'save_id': None, 
                **clus_param}
-beta_preprocess_kwargs = {"preprocess": beta_preprocess, "preprocess_null": False}
-plot_kwargs = dict(plot=True, folder=clusfig_folder, vs=['block', 'side', 'contrast_level', 'choice', "outcome", "wheel", "whisker_max", "lick"])
+beta_preprocess_kwargs = {"preprocess": beta_preprocess}
+plot_kwargs = dict(plot=True, folder=clusfig_folder, vs=['block', 'side', 'contrast_level', 'choice', "outcome", "wheel", "whisker", "lick"])
 
 results = dict(region=[], ss_z=[], ss=[], ss_k=[], ss_null=[], ss_null_mean=[], ss_null_std=[], N=[])
 for area in tqdm(area_order_H):
@@ -91,7 +83,7 @@ for area in tqdm(area_order_H):
     sel_vs_area = coef_vs_area.sum(-1)
 
     plot_kwargs['plot_others'] = [coef_vs_area, sel_vs_area]
-    clus_res = cluster_analysis(coef_vs_area, N_nullG, beta_preprocess_kwargs, algo_kwargs, sus_clus_kwargs, plot_kwargs)
+    clus_res = cluster_analysis(coef_vs_area, N_nullG, beta_preprocess_kwargs, algo_kwargs, sus_clus_kwargs, null_kwargs, plot_kwargs)
 
     if clus_res['final_clus_res']['clus_success']: 
         log_kv(area=area, sscore_z=clus_res['final_clus_res']['sscore_z'])

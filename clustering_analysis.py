@@ -1,11 +1,14 @@
 import numpy as np
+import pandas as pd
 import pdb, os
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
 import seaborn as sns
 
-
+from sdv.single_table import GaussianCopulaSynthesizer
+from sdv.evaluation.single_table import evaluate_quality
+from sdv.metadata import Metadata
 from sklearn.decomposition import PCA
 from sklearn.metrics import silhouette_score
 
@@ -106,7 +109,7 @@ def _plot_clus_res(X, vs, X_orig, y_sort, clus_labels, plot_kwargs, others=None)
     ax = fig.add_subplot(gs[0, 0])
     clustered_data_mat_plot(X[y_sort], 
                             clus_labels[y_sort], 
-                            vs, 
+                            np.arange(X.shape[1]), 
                             ax, fig,
                             'bwr' if np.min(X)<0 else 'Greys')
     ax2 = fig.add_subplot(gs[0, 1:]) 
@@ -144,6 +147,140 @@ def _plot_clus_res(X, vs, X_orig, y_sort, clus_labels, plot_kwargs, others=None)
     fname = os.path.join(plot_kwargs['folder'], f"{plot_kwargs['save_name']}.pdf")
     plt.savefig(fname); 
     plt.close()
+
+
+def _construct_null_model(X, null_kwargs):
+    temp_df = pd.DataFrame(X, columns=[f"{i}" for i in range(X.shape[1])])
+
+    def _gamma(data_df):
+        metadata = Metadata.detect_from_dataframe(data=data_df)
+        synthesizer = GaussianCopulaSynthesizer(metadata, 
+                                        numerical_distributions={c:"gamma" for c in data_df.columns},
+                                        enforce_min_max_values=False)
+        synthesizer.fit(data_df)
+        sim_df = synthesizer.sample(num_rows=len(data_df)*null_kwargs['N_null'])
+        return sim_df
+    def _truncnorm(data_df):
+        metadata = Metadata.detect_from_dataframe(data=data_df)
+        synthesizer = GaussianCopulaSynthesizer(metadata, 
+                                        numerical_distributions={c:"truncnorm" for c in data_df.columns},
+                                        enforce_min_max_values=False)
+        synthesizer.fit(data_df)
+        sim_df = synthesizer.sample(num_rows=len(data_df)*null_kwargs['N_null'])
+        return sim_df
+    def _lognormal(data_df, c=1e-2):
+        log_df = np.log(data_df+c)
+        metadata = Metadata.detect_from_dataframe(data=log_df)
+        synthesizer = GaussianCopulaSynthesizer(metadata, 
+                                        numerical_distributions={c:"truncnorm" for c in log_df.columns},
+                                        enforce_min_max_values=False)
+        synthesizer.fit(log_df)
+        sim_log_df = synthesizer.sample(num_rows=len(log_df)*null_kwargs['N_null'])
+        sim_df = np.exp(sim_log_df)-c
+        return sim_df
+    def _lognormal2(X, c=1e-2):
+        log_X = np.log(X+c)
+        np.random.seed(42)
+        log_X_null = np.random.multivariate_normal(np.mean(log_X, 0), np.cov(log_X.T), len(log_X)*null_kwargs['N_null'])
+        X_null = np.exp(log_X_null)-c
+        new_df = pd.DataFrame(X_null, columns=[f"{i}" for i in range(X.shape[1])])
+        return new_df
+
+    ## null model 1
+    if (null_kwargs['null_dist'] == "Gaussian"):
+        np.random.seed(42)
+        X_null = np.random.multivariate_normal(np.mean(X, 0), np.cov(X.T), len(X)*null_kwargs['N_null'])
+        new_df = pd.DataFrame(X_null, columns=[f"{i}" for i in range(X.shape[1])])
+    elif (null_kwargs['null_dist'] == "multi-log-normal"):
+        new_df = _lognormal2(temp_df, c=0.)
+    ## null model 2
+    elif (null_kwargs['null_dist'] == "GaussianCoupla"):
+        new_df = _gamma(temp_df)
+    elif (null_kwargs['null_dist'] == "GaussianCoupla_ms"):
+        metadata = Metadata.detect_from_dataframe(data=temp_df)
+        candidate_num_dists = ['gamma', 'truncnorm', 'log-normal']; new_df_all = []
+        best_score = 0.; best_num_disti = 0
+        for disti, num_dist in enumerate(candidate_num_dists):
+            if (num_dist == "gamma"):
+                new_df = _gamma(temp_df)
+            elif (num_dist == "truncnorm"):
+                new_df = _truncnorm(temp_df)
+            elif (num_dist == "log-normal"):
+                new_df = _lognormal(temp_df, c=0.)
+                # new_df = _lognormal(temp_df, c=np.asarray([np.min(X[X[:,i]>0,i]) for i in range(X.shape[1])]))
+            new_df_all.append(new_df)
+            quality_report = evaluate_quality(temp_df, new_df, metadata, verbose=False)
+            if quality_report.get_score() > best_score:
+                best_score = quality_report.get_score()
+                best_num_disti = disti
+                print(num_dist, best_score)
+        new_df = new_df_all[best_num_disti]
+    ## null model 3
+    elif (null_kwargs['null_dist'] == "shuffle"):
+        new_df = pd.concat([temp_df.apply(lambda col: np.random.permutation(col)) for _ in range(null_kwargs['N_null'])], ignore_index=True)
+    else:
+        assert False
+
+    if ('plot' in null_kwargs) and (null_kwargs['plot']):
+        fig, axes = plt.subplots(1,4,figsize=(3*4,3*1))
+        for ci in range(4):
+            ax = axes.flat[ci]
+            sns.histplot(data=temp_df, x=f"{ci}", kde=False, ax=ax, bins=50, stat='density', label='data')
+            sns.histplot(data=new_df, x=f"{ci}", kde=False, ax=ax, bins=50, stat='density', label='data')
+            # for disti, _ in enumerate(new_df_all):
+            #     sns.kdeplot(data=_, x=f"{ci}", ax=ax, label=candidate_num_dists[disti])
+            if ci == 0: ax.legend()
+        if 'ms' in null_kwargs['null_dist']:
+            fig.suptitle(f"null model: {null_kwargs['null_dist']} - {candidate_num_dists[best_num_disti]}")
+        else:
+            fig.suptitle(f"null model: {null_kwargs['null_dist']}")
+        plt.tight_layout()
+        plt.savefig(os.path.join(null_kwargs['folder'], f"hist_{null_kwargs['save_id']}.pdf")); plt.close('all')
+
+    X_null = new_df.to_numpy().reshape((null_kwargs['N_null'], len(X), -1))
+
+    return X_null
+
+def _preprocess_X(X_lowd, beta_preprocess_kwargs):
+    for p in beta_preprocess_kwargs['preprocess']:
+        if p[0] == "normalize":
+            _axis = p[1]
+            X_lowd = (X_lowd-X_lowd.mean(_axis, keepdims=True))/X_lowd.std(_axis, keepdims=True)
+        elif p[0] == "uniform":
+            _axis = p[1]
+            X_lowd = X_lowd / np.sum(X_lowd, _axis, keepdims=True)
+        elif p[0] == "pca":
+            X_lowd = X_lowd.reshape((len(X_lowd), -1))
+            
+            if type(p[1]) == int:
+                dr_kwargs=dict(method=p[0], ncomp=p[1])
+            elif type(p[1]) == float:
+                dr_kwargs=dict(method=p[0], exp_var=p[1])
+            X_lowd = dr(X_lowd, dr_kwargs)
+
+        elif p[0] == "pca_temporal":
+            # X_lowd, vs_new = PCA_dr(X_lowd, p[1], normalize=p[2])
+            X = X_lowd.copy()
+            X_lowd = []; 
+            for i in range(X.shape[1]):
+                _X = X[:, i]
+                if p[1][0] == False:
+                    pca = PCA().fit(_X)
+                    n_comp = np.where(np.cumsum(pca.explained_variance_ratio_)>p[1][1])[0][0]+1
+                else:
+                    n_comp = p[1][1]
+                _X_lowd = PCA(n_components=n_comp).fit_transform(_X)
+                X_lowd.append(_X_lowd)
+            X_lowd = np.concatenate(X_lowd,axis=1)
+
+        elif p[0] == "sum":
+            _axis = p[1]
+            X_lowd = np.sum(X_lowd, _axis)
+
+        else:
+            assert False
+    return X_lowd
+
 
 
 """
@@ -192,7 +329,7 @@ Output:
         - sscore_samples: np.array([ss for each neuron])
         - has_sus_clus: whether has sus clus this round
 """
-def cluster_analysis(beta, N_null, beta_preprocess_kwargs, algo_kwargs, sus_clus_kwargs, plot_kwargs):
+def cluster_analysis(beta, N_null, beta_preprocess_kwargs, algo_kwargs, sus_clus_kwargs, null_kwargs, plot_kwargs):
     # initialization
     roundi = 0; data_clus_hist = []; good_nismask = np.ones(len(beta), dtype=bool)
     X_orig_all = beta.copy()
@@ -208,28 +345,7 @@ def cluster_analysis(beta, N_null, beta_preprocess_kwargs, algo_kwargs, sus_clus
         if beta_preprocess_kwargs['preprocess'] is None:
             pass
         elif type(beta_preprocess_kwargs['preprocess']) is list:
-            for p in beta_preprocess_kwargs['preprocess']:
-                if p[0] == "normalize":
-                    _axis = p[1]
-                    X_lowd = (X_lowd-X_lowd.mean(_axis, keepdims=True))/X_lowd.std(_axis, keepdims=True)
-                elif p[0] == "pca":
-                    X_lowd = X_lowd.reshape((len(X_lowd), -1))
-                    
-                    if type(p[1]) == int:
-                        dr_kwargs=dict(method=p[0], ncomp=p[1])
-                    elif type(p[1]) == float:
-                        dr_kwargs=dict(method=p[0], exp_var=p[1])
-                    X_lowd = dr(X_lowd, dr_kwargs)
-                    plot_kwargs['vs'] = np.array([f"PC{i}" for i in range(X_lowd.shape[1])])
-
-                elif p[0] == "pca_temporal":
-                    X_lowd, vs_new = PCA_dr(X_lowd, p[1], normalize=p[2])
-                    plot_kwargs['vs'] = vs_new
-
-                elif p[0] == "sum":
-                    _axis = p[1]
-                    X_lowd = np.sum(X_lowd, _axis)
-                
+            X_lowd = _preprocess_X(X_lowd, beta_preprocess_kwargs)
         else:
             assert False
         vs = plot_kwargs['vs']
@@ -293,31 +409,18 @@ def cluster_analysis(beta, N_null, beta_preprocess_kwargs, algo_kwargs, sus_clus
         _X = data_clus_hist[-1]['X']
         _vs = data_clus_hist[-1]['vs']
         sscore_nulls = []
+        _X_nulls = _construct_null_model(_X_orig if null_kwargs['preprocess_null'] else _X, 
+                                         {**null_kwargs, "plot": True, "folder": plot_kwargs['folder'], "save_id": plot_kwargs['save_id']})
         for i in tqdm(range(N_null)):
-            np.random.seed(42+i)
-
-            if beta_preprocess_kwargs['preprocess_null']:
-                _X_null = np.random.multivariate_normal(np.mean(_X_orig, 0), np.cov(_X_orig.T), len(_X_orig))
-                _X_null_orig = _X_null.copy()
+            _X_null = _X_null_orig = _X_nulls[i].copy()
+            if null_kwargs['preprocess_null']:
                 # preprocess the null data
                 if beta_preprocess_kwargs['preprocess'] is None:
                     pass
                 elif type(beta_preprocess_kwargs['preprocess']) is list:
-                    for p in beta_preprocess_kwargs['preprocess']:
-                        if p[0] == "normalize":
-                            _axis = p[1]
-                            _X_null = (_X_null-_X_null.mean(_axis, keepdims=True))/_X_null.std(_axis, keepdims=True)
-                        elif p[0] == "pca":
-                            if type(p[1]) == int:
-                                dr_kwargs=dict(method=p[0], ncomp=p[1])
-                            elif type(p[1]) == float:
-                                dr_kwargs=dict(method=p[0], exp_var=p[1])
-                            _X_null = dr(_X_null, dr_kwargs)
+                    _X_null = _preprocess_X(_X_null, beta_preprocess_kwargs)
                 else:
                     assert False
-            else:
-                _X_null = np.random.multivariate_normal(np.mean(_X, 0), np.cov(_X.T), len(_X))
-                _X_null_orig = _X_null.copy()
 
             algo_kwargs['save_label'] = f"{algo_kwargs['save_id']}_nullG{i}"
             clus_res_nulli = _clus_main(_X_null, _vs, algo_kwargs)
@@ -330,12 +433,11 @@ def cluster_analysis(beta, N_null, beta_preprocess_kwargs, algo_kwargs, sus_clus
                 _plot_kwargs = dict(folder=plot_kwargs['folder'], save_name=f"{plot_kwargs['save_id']}_nullG{i}")
                 _plot_clus_res(clus_res_nulli['X'], 
                             clus_res_nulli['vs'], 
-                            clus_res_nulli['X'], ## placeholder
+                            _X_null_orig, 
                             clus_res_nulli['neuron_sort'], 
                             clus_res_nulli['clus_labels'], 
                             _plot_kwargs)
 
-        
         final_result["clus_success"] = True
         final_result["sscore_z"] = (data_clus_hist[-1]['sscore_mean'] - np.mean(sscore_nulls)) / np.std(sscore_nulls)
         final_result["sscore_mean"] = data_clus_hist[-1]['sscore_mean']
@@ -379,8 +481,6 @@ def cluster_analysis(beta, N_null, beta_preprocess_kwargs, algo_kwargs, sus_clus
             ax = axes[1]
             ax.plot(footprints, '-x')
             ax.set_ylabel("decrease in SS \n (by removing v)")
-            ax.set_xticks(np.arange(len(final_result['vs'])))
-            ax.set_xticklabels(final_result['vs'],rotation = 90, ha="right")
             ax.tick_params(axis='both', which='major', labelsize=15)
 
             plt.tight_layout()
@@ -389,6 +489,51 @@ def cluster_analysis(beta, N_null, beta_preprocess_kwargs, algo_kwargs, sus_clus
 
     return dict(final_clus_res=final_result, data_clus_hist=data_clus_hist)
     
+
+
+def epairs_main(X_4_epairs, epairs_kwargs, null_kwargs, beta_preprocess_kwargs):
+    null_kwargs_epairs = null_kwargs.copy()
+    null_kwargs_epairs['N_null'] = epairs_kwargs['N_null'] # rewrite the N_null
+    if null_kwargs['preprocess_null']:
+        # mfr, condition space
+        epairs_res = epairs(X_4_epairs, epairs_kwargs['n_neigh'], null_kwargs_epairs, beta_preprocess=beta_preprocess_kwargs)
+    else:
+        epairs_res = epairs(X_4_epairs, epairs_kwargs['n_neigh'], null_kwargs_epairs)
+
+    return epairs_res
+
+from sklearn.neighbors import NearestNeighbors
+def epairs(beta, n_neigh, null_kwargs, beta_preprocess=None, **others):
+    
+    def _mean_dis(X):
+        if beta_preprocess is None:
+            # remove the mean
+            X = X - np.mean(X, 0)
+        elif type(beta_preprocess['preprocess']) is list:
+            X = _preprocess_X(X, beta_preprocess)
+        else:
+            assert False
+        nbrs = NearestNeighbors(n_neighbors=n_neigh+1,  metric='cosine').fit(X)
+        dist, inds = nbrs.kneighbors(X, n_neigh+1, return_distance=True)
+        angs = np.arccos(1-dist)[:,1:].mean(1)
+        ang_median = np.median(angs)
+        return ang_median, angs
+
+    ang_median_data, angs_data = _mean_dis(beta)
+
+    ang_nulls = []
+    _X_nulls = _construct_null_model(beta, 
+                                    {**null_kwargs, "plot": False, }) #"folder": plot_kwargs['folder'], "save_id": plot_kwargs['save_id']})
+    for i in tqdm(range(len(_X_nulls))):
+        ang_median_null, angs_null_example = _mean_dis(_X_nulls[i])
+        ang_nulls.append(ang_median_null)
+    
+    c = (ang_median_data-np.mean(ang_nulls))/np.std(ang_nulls)
+    p = np.mean(ang_nulls<ang_median_data)
+    return {'epairs_p': p, 'epairs_z': c, 'angs_data': angs_data, 'ang_nulls': ang_nulls, "ang_null_example": angs_null_example} 
+
+
+
 
 
 
