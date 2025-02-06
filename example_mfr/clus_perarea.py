@@ -159,7 +159,6 @@ for n_neigh in [1, 3, 5]:
     pickle.dump(results_epairs, open(os.path.join(clusfig_folder, "results_epairs.pk"), 'wb'))
 
     if n_neigh == 1:
-        # results_epairs = pickle.load(open(os.path.join(clusfig_folder, "results_epairs.pk"), 'rb'))
         results_epairs_part = dict(); 
         results_epairs_part['epairs_p_clipped'] = np.clip(results_epairs['epairs_p'], 0.0, 0.05)
         for k in results_epairs: results_epairs_part[k] = np.asarray(results_epairs[k])

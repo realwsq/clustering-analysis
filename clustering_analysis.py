@@ -506,13 +506,7 @@ def epairs_main(X_4_epairs, epairs_kwargs, null_kwargs, beta_preprocess_kwargs):
 from sklearn.neighbors import NearestNeighbors
 def epairs(beta, n_neigh, null_kwargs, beta_preprocess=None, **others):
     
-    # fig, axes = plt.subplots(2,4,figsize=(3.5*4,3.5*2))
     def _mean_dis(X):
-        # for i in range(4):
-        #     axes[0][i].hist(X[:,i], bins=np.arange(0,100,2), density=True, alpha=0.5)
-        #     axes[0][i].set_xlabel("mfr [Hz]")
-        #     axes[0][i].set_ylabel("density")
-        #     axes[0][i].set_title(f"condition {i}")
         if beta_preprocess is None:
             # remove the mean
             X = X - np.mean(X, 0)
@@ -520,13 +514,6 @@ def epairs(beta, n_neigh, null_kwargs, beta_preprocess=None, **others):
             X = _preprocess_X(X, beta_preprocess)
         else:
             assert False
-        # for i in range(4):
-        #     axes[1][i].hist(X[:,i], bins=50, density=True, alpha=0.5)
-        #     axes[1][i].set_xlabel("z-scored mfr")
-        #     axes[1][i].set_ylabel("density")
-        #     axes[1][i].set_title(f"condition {i}")
-        # pdb.set_trace()
-        # plt.tight_layout(); plt.savefig(f"temp.pdf"); 
         nbrs = NearestNeighbors(n_neighbors=n_neigh+1,  metric='cosine').fit(X)
         dist, inds = nbrs.kneighbors(X, n_neigh+1, return_distance=True)
         angs = np.arccos(1-dist)[:,1:].mean(1)
