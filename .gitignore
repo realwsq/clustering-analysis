@@ -5,6 +5,8 @@ exampleN/*
 example_y_fr/*
 example_mfr/res_good/*
 example_mfr/utils/collect_data.py
+example_mfr/utils/collect_data.py
+example_mfr/utils/hirokawa.mat
 *_me.py
 
 # Byte-compiled / optimized / DLL files

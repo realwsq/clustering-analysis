@@ -226,9 +226,10 @@ def _construct_null_model(X, null_kwargs):
         for ci in range(4):
             ax = axes.flat[ci]
             sns.histplot(data=temp_df, x=f"{ci}", kde=False, ax=ax, bins=50, stat='density', label='data')
-            sns.histplot(data=new_df, x=f"{ci}", kde=False, ax=ax, bins=50, stat='density', label='data')
+            sns.kdeplot(data=new_df, x=f"{ci}", ax=ax, label="sim")
             # for disti, _ in enumerate(new_df_all):
             #     sns.kdeplot(data=_, x=f"{ci}", ax=ax, label=candidate_num_dists[disti])
+            ax.set_xlim([0, temp_df[f"{ci}"].max()*1.1])
             if ci == 0: ax.legend()
         if 'ms' in null_kwargs['null_dist']:
             fig.suptitle(f"null model: {null_kwargs['null_dist']} - {candidate_num_dists[best_num_disti]}")
@@ -505,7 +506,13 @@ def epairs_main(X_4_epairs, epairs_kwargs, null_kwargs, beta_preprocess_kwargs):
 from sklearn.neighbors import NearestNeighbors
 def epairs(beta, n_neigh, null_kwargs, beta_preprocess=None, **others):
     
+    # fig, axes = plt.subplots(2,4,figsize=(3.5*4,3.5*2))
     def _mean_dis(X):
+        # for i in range(4):
+        #     axes[0][i].hist(X[:,i], bins=np.arange(0,100,2), density=True, alpha=0.5)
+        #     axes[0][i].set_xlabel("mfr [Hz]")
+        #     axes[0][i].set_ylabel("density")
+        #     axes[0][i].set_title(f"condition {i}")
         if beta_preprocess is None:
             # remove the mean
             X = X - np.mean(X, 0)
@@ -513,6 +520,13 @@ def epairs(beta, n_neigh, null_kwargs, beta_preprocess=None, **others):
             X = _preprocess_X(X, beta_preprocess)
         else:
             assert False
+        # for i in range(4):
+        #     axes[1][i].hist(X[:,i], bins=50, density=True, alpha=0.5)
+        #     axes[1][i].set_xlabel("z-scored mfr")
+        #     axes[1][i].set_ylabel("density")
+        #     axes[1][i].set_title(f"condition {i}")
+        # pdb.set_trace()
+        # plt.tight_layout(); plt.savefig(f"temp.pdf"); 
         nbrs = NearestNeighbors(n_neighbors=n_neigh+1,  metric='cosine').fit(X)
         dist, inds = nbrs.kneighbors(X, n_neigh+1, return_distance=True)
         angs = np.arccos(1-dist)[:,1:].mean(1)
@@ -523,7 +537,7 @@ def epairs(beta, n_neigh, null_kwargs, beta_preprocess=None, **others):
 
     ang_nulls = []
     _X_nulls = _construct_null_model(beta, 
-                                    {**null_kwargs, "plot": False, }) #"folder": plot_kwargs['folder'], "save_id": plot_kwargs['save_id']})
+                                    {**null_kwargs, "plot": False})
     for i in tqdm(range(len(_X_nulls))):
         ang_median_null, angs_null_example = _mean_dis(_X_nulls[i])
         ang_nulls.append(ang_median_null)
