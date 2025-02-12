@@ -222,14 +222,15 @@ def _construct_null_model(X, null_kwargs):
         assert False
 
     if ('plot' in null_kwargs) and (null_kwargs['plot']):
-        fig, axes = plt.subplots(1,4,figsize=(3*4,3*1))
-        for ci in range(4):
+        ncol = 2
+        fig, axes = plt.subplots(1,ncol,figsize=(3*ncol,3*1))
+        for ci in range(ncol):
             ax = axes.flat[ci]
-            sns.histplot(data=temp_df, x=f"{ci}", kde=False, ax=ax, bins=50, stat='density', label='data')
-            sns.kdeplot(data=new_df, x=f"{ci}", ax=ax, label="sim")
+            sns.histplot(data=temp_df, x=f"{ci}", kde=False, ax=ax, bins=50, alpha=0.5, stat='density', label='data')
+            sns.kdeplot(data=new_df, x=f"{ci}", ax=ax, label="log-normal", linewidth=3)
             # for disti, _ in enumerate(new_df_all):
             #     sns.kdeplot(data=_, x=f"{ci}", ax=ax, label=candidate_num_dists[disti])
-            ax.set_xlim([0, temp_df[f"{ci}"].max()*1.1])
+            ax.set_xlim([-10, temp_df[f"{ci}"].max()*1.1])
             if ci == 0: ax.legend()
         if 'ms' in null_kwargs['null_dist']:
             fig.suptitle(f"null model: {null_kwargs['null_dist']} - {candidate_num_dists[best_num_disti]}")
