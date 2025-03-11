@@ -8,6 +8,11 @@ A long-standing debate in neuroscience concerns whether individual neurons are o
  
 We found that the structure of the neural code was scale-dependent: on a whole-cortex scale, neural selectivity was categorical and organized across regions in a way that reflected their anatomical connectivity. However, within individual regions, categorical representations were rare and limited to primary sensory areas. Remarkably, the degree of categorical clustering of neural selectivity was inversely correlated to the dimensionality of neural representations, suggesting a link between single-neuron selectivity and computational properties of population codes that we explained in a mathematical model.
 
+## Get started
+
+Check out the folder of `example_selectivity` for a complete example of performing the clustering analysis in the **variable selectivity space**, using the single neuron coefficients of an encoding model that is trained to predict the neural responses using the relevant task variables.
+
+
 ## How to Stay Updated
 
 -  ⁠🌟 *Star this repository* to receive notifications about the latest updates.
@@ -18,5 +23,7 @@ In case you have any questions, please get in touch with me: shuqi.wang@epfl.ch
 
 ### References:
 [1] Posani, L., Wang, S., Muscinelli, S. P., Paninski, L., & Fusi, S. (2025). Rarely categorical, always high-dimensional: how the neural code changes along the cortical hierarchy. bioRxiv, 2024-11.
+
 [2] International Brain Laboratory, Benson, B., Benson, J., Birman, D., Bonacchi, N., Bougrova, K., ... & Witten, I. B. (2023). A brain-wide map of neural activity during complex behaviour. biorxiv, 2023-07.
+
 [3] Harris, J. A., Mihalas, S., Hirokawa, K. E., Whitesell, J. D., Choi, H., Bernard, A., ... & Zeng, H. (2019). Hierarchical organization of cortical and thalamic connectivity. Nature, 575(7781), 195-202.

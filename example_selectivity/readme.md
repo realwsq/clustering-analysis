@@ -1,4 +1,4 @@
-This subfolder includes a **complete** example of performing the clustering analysis in the **variable selectivity space**, using the single neuron coefficients estimated from an encoding model that predicts the neural responses using the relevant task variables.
+This subfolder includes a **complete** example of performing the clustering analysis in the **variable selectivity space**, using the single neuron coefficients of an encoding model that is trained to predict the neural responses using the relevant task variables.
 
 This subfolder reproduces main results in the paper [1], including Fig. 3bcde, Suppl. Fig. 7abcd, and Suppl. Fig. 4 and 5.
 
