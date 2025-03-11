@@ -7,7 +7,7 @@ from sklearn.metrics.pairwise import pairwise_distances
 import leidenalg as la
 import igraph as ig
 
-from utils import log_kv, load_or_save_dict, remove_space
+from utils import load_or_save_dict, remove_space
 
 
 def _get_best(ms_hist, _train_and_eval, **kwargs):
@@ -72,7 +72,6 @@ def kmeans_sort(data_mat, n_clus_lim=None, dis_metric='euclidean',
     return best_res         
 
 
-
 def leiden_sort(data_mat, k_list, dis_metric='minkowski', 
                 n_iterations=2, partition_type='modularity', weighted=False,
                 eval_metrics=["sscore", "modularity"], ms_metric="modularity", 
@@ -127,10 +126,6 @@ def leiden_sort(data_mat, k_list, dis_metric='minkowski',
                          n_iterations=n_iterations, partition_type=partition_type)
             if k >= len(data_mat):
                 continue
-            # if save_prefix is not None:
-            #     res = load_or_save_dict(f"{save_prefix}_{save_midfix}_{k}.pkl", _train_and_eval, **param)
-            # else:
-            #     res = _train_and_eval(**param)
             res = _train_and_eval(data_mat, **param)
             ms_hist['param'].append(param)
             ms_hist['eval_metrics'].append(res['eval_metrics'])
@@ -165,6 +160,7 @@ def clustering(data_mat, clus_algo,
     n_clus = clus_res['n_clus']; 
     clus_labels = clus_res['res']
     if order_label:
+        # order the cluster labels so that the cluster with smaller labels has higher silhouette score
         n_clus = len(np.unique(clus_labels))
         _sscores = silhouette_samples(data_mat, clus_labels, metric=clus_kwargs['dis_metric'])
         _sscores_mean = [np.mean(_sscores[clus_labels==li]) for li in range(n_clus)]

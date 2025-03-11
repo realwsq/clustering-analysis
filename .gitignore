@@ -1,11 +1,15 @@
-example1/res_good/*
+example_selectivity/clus_permodule.py
+example_selectivity/res_good/*
+example_selectivity/neural_selectivity_data/*
 example1_subcortex/*
 example2/*
 exampleN/*
 example_y_fr/*
+example_mfr/*
 example_mfr/res_good/*
-example_mfr/utils/collect_data.py
-example_mfr/utils/hirokawa.mat
+example_mfr/utils/*
+example_mfr/neural_mfr_data/*
+# example_mfr/neural_mfr_data/hirokawa.mat
 *_me.py
 
 # Byte-compiled / optimized / DLL files

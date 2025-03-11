@@ -1,5 +1,4 @@
 import numpy as np
-from tqdm import tqdm
 from sklearn.manifold import TSNE, MDS
 from sklearn.decomposition import PCA
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
